@@ -1,0 +1,56 @@
+# ---- Secrets (never commit) ----
+.env
+.env.*
+!.env.example
+secrets/
+**/google-credentials.json
+*.pem
+*.key
+
+# ---- Python / backend ----
+.venv/
+venv/
+perdiem_venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# ---- Node / frontend (Vite + pnpm) ----
+node_modules/
+frontend/dist/
+.pnpm-store/
+*.tsbuildinfo
+.vite/
+
+# ---- Runtime / data (Docker volumes, local caches, generated reports) ----
+data/
+roster-cache/
+output/
+*.sqlite
+*.sqlite3
+
+# ---- Logs ----
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ---- Claude Code (keep shared config, ignore local overrides) ----
+.claude/settings.local.json
