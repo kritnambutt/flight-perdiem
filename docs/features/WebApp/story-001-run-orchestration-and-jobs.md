@@ -35,12 +35,13 @@ So that I know it's working and roughly how long is left
 
 #### Included
 
-- `POST /api/runs` — start a run for a month; insert a `runs` row
-  (`status=queued`), return `run_id` immediately (F15).
+- `POST /api/runs` — **multipart upload** of two `.xlsx` files (Posting Base +
+  Late Submission) plus the cycle month; validate files, insert a `runs` row
+  (`status=queued`), store uploaded files, return `run_id` immediately (F15).
 - A **worker** picks up queued runs and executes the pipeline, writing
   progress/verdicts/audit to Postgres.
 - `GET /api/runs/{id}` — status + progress stage + counts (F16).
-- Run states: `queued → downloading → ocr → validating → aggregating → done`
+- Run states: `queued → parsing → downloading → ocr → validating → aggregating → done`
   (or `error`).
 - One concurrent run at a time (protect the Pi).
 
@@ -52,7 +53,8 @@ So that I know it's working and roughly how long is left
 
 ### Functional Requirements
 
-1. **Start run (F15)** — `POST /api/runs {month}` returns `run_id` without
+1. **Start run (F15)** — `POST /api/runs` (multipart: `month`, `posting_base`
+   file, `late_submission` file) validates both files, returns `run_id` without
    blocking; the pipeline does **not** run in the request thread.
 2. **Worker execution** — the worker claims a queued run, executes
    Ingestion→Validation→Reporting, updating progress at each stage.
@@ -74,7 +76,8 @@ So that I know it's working and roughly how long is left
 ### Endpoints
 
 ```
-POST /api/runs            { month } -> { run_id }
+POST /api/runs            multipart: { month, posting_base: File, late_submission: File }
+                          -> { run_id }
 GET  /api/runs/{id}       -> { status, stage, counts, started_at, finished_at }
 GET  /api/runs            -> recent runs (history)
 ```
@@ -89,7 +92,8 @@ GET  /api/runs            -> recent runs (history)
 
 ### Frontend
 
-- `RunPage.tsx`: month picker + **Run** button; progress bar + live counts via
+- `RunPage.tsx`: month picker + **two file upload inputs** (Posting Base +
+  Late Submission `.xlsx`) + **Run** button; progress bar + live counts via
   `useRun` / `usePolling` hooks calling `GET /api/runs/{id}`.
 
 ## 🔨 Implementation Plan

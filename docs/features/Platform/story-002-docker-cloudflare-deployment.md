@@ -30,7 +30,8 @@ So that staff can use it securely without exposing my home network
 
 - Docker + docker-compose on the Pi 5 (arm64).
 - The Pi already runs `cloudflared` with a configured tunnel.
-- Google service-account JSON available as a mounted secret.
+- `gcloud auth login --enable-gdrive-access --account=kantaphajasuwan@airasia.com`
+  has been run once on the Pi (verified via `scripts/auth_drive.py`).
 
 ### Scope
 
@@ -89,7 +90,7 @@ services:
     volumes:
       - roster-cache:/data/cache
       - output:/data/output
-      - ./secrets/google-credentials.json:/run/secrets/google.json:ro
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro   # gcloud Drive credentials
     ports: ["127.0.0.1:8000:8000"]
     restart: unless-stopped
   worker:
@@ -100,7 +101,7 @@ services:
     volumes:
       - roster-cache:/data/cache
       - output:/data/output
-      - ./secrets/google-credentials.json:/run/secrets/google.json:ro
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro   # gcloud Drive credentials
     restart: unless-stopped
   db:
     image: postgres:16-alpine
@@ -126,12 +127,12 @@ volumes: { pgdata: {}, roster-cache: {}, output: {} }
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** Multi-stage api Dockerfile (node build SPA → python serves dist/).
-2. 📝 **TODO** Root `docker-compose.yml` (api, worker, db) + volumes + healthcheck.
-3. 📝 **TODO** `.env.example` + secret mount; localhost port binding.
-4. 📝 **TODO** Migration step in deploy flow.
-5. 📝 **TODO** Add Cloudflare hostname → localhost:8000; verify HTTPS reachability.
-6. 📝 **TODO** Reboot test (restart policy) + arm64 build validation.
+1. ✅ **DONE** Multi-stage `Dockerfile`: `node:20-alpine` builds SPA → `python:3.12-slim` runtime with Tesseract, OpenCV, and Google Cloud CLI; `SPA_DIR` env var controls static mount path.
+2. ✅ **DONE** `docker-compose.yml` at repo root: `api`, `worker`, `db` (postgres:16-alpine) + named volumes `pgdata`, `roster-cache`, `uploads`, `reports`; `db` healthcheck; `restart: unless-stopped`; api bound to `127.0.0.1:8000`.
+3. ✅ **DONE** `.env.example` updated with all vars; `docker/entrypoint.sh` runs `alembic upgrade head` then `exec uvicorn`; gcloud credentials mounted read-only from host `~/.config/gcloud`.
+4. ✅ **DONE** Migrations run automatically on api container start via `entrypoint.sh`.
+5. 📋 **MANUAL** Cloudflare: in the Cloudflare dashboard → existing tunnel → Add public hostname → `http://localhost:8000`. No code change needed.
+6. 📋 **VERIFY** Reboot test: `restart: unless-stopped` brings services back; arm64 build requires `docker buildx` with `--platform linux/arm64` when cross-building from non-Pi host.
 
 ## 🏗 Structure
 

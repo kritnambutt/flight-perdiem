@@ -118,22 +118,22 @@ rate_thb_per_day: 400
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** Pure rule functions: `route_ok`, `flight_ok`, `coverage_ok`, `proof_ok`, `month_route`.
-2. 📝 **TODO** Orchestrator `validate_claim` combining rules + R3 + R5a into per-day verdicts.
-3. 📝 **TODO** Config loader + start-up validation of flight-number set.
-4. 📝 **TODO** Unit-test matrix: each rule pass/fail; back-claim; multi-leg days; unproven date.
+1. ✅ **DONE** Pure rule functions: `route_ok`, `flight_ok`, `coverage_ok`, `proof_ok`, `month_route`.
+2. ✅ **DONE** Orchestrator `validate_claim` — identity → pairing → per-day R6→R4→R1/R2→R3→R5a→R8; red annotation overrides form day list.
+3. ✅ **DONE** `RulesConfig` dataclass in `backend/perdiem/engine/config.py` with `validate()` startup check.
+4. ✅ **DONE** Unit-test matrix: each rule pass/fail, back-claim remark, R5a name review, red annotation override, empty days (27 tests, all pass).
 
 ## 🏗 Structure
 
 ```
 backend/perdiem/engine/
 ├── rules.py          # R1,R2,R4,R6,R8 pure predicates + validate_claim orchestrator
-└── config.py         # RulesConfig (routes, flight numbers, rate)
+└── config.py         # RulesConfig (routes, flight numbers, rate) + validate()
+tests/engine/
+└── test_rules.py     # 27 unit tests
 ```
 
 ## 📌 Notes / Open Questions
 
-- **R4 direction (REQUIREMENTS §9 Q2):** the "(correct format)" sample has the
-  generated date *before* the claimed days, contradicting R4. Confirm before
-  finalising the comparison.
-- Claim types `Layover` / `Irregularity` — same rules? (§9 Q4).
+- **R4 direction (REQUIREMENTS §9 Q2) — UNRESOLVED:** implemented as `generated_at.date() >= claimed_date` (roster printed on or after the flight). The "(correct format)" sample appears to contradict this. **Confirm with stakeholders before final release** — if the rule should be reversed, flip the comparison in `rules.proof_ok()`.
+- Claim types `Layover` / `Irregularity` — same rules as Posting? (§9 Q4). Currently treated identically; revisit when confirmed.

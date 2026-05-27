@@ -11,9 +11,9 @@ See [../../REQUIREMENTS.md](../../REQUIREMENTS.md) (§5 rules, §6.3) and
 
 | Story ID    | Title                                  | Reqs                         | Status      |
 | ----------- | -------------------------------------- | ---------------------------- | ----------- |
-| PD-VAL-001  | Eligibility rules engine               | R1, R2, R4, R6, R8, F7       | 📝 Planned  |
-| PD-VAL-002  | Identity & fuzzy name matching         | R5, R5a                      | 📝 Planned  |
-| PD-VAL-003  | Out-and-back pairing across days       | R3, F8                       | 📝 Planned  |
+| PD-VAL-001  | Eligibility rules engine               | R1, R2, R4, R6, R8, F7       | ✅ Done     |
+| PD-VAL-002  | Identity & fuzzy name matching         | R5, R5a                      | ✅ Done     |
+| PD-VAL-003  | Out-and-back pairing across days       | R3, F8                       | ✅ Done     |
 
 **Verdict model (shared):** each claimed day → `VALID`, `VALID (back-claim)`,
 `NEEDS_REVIEW(reason)`, or `INVALID(reason)`, each tagged with the rule that

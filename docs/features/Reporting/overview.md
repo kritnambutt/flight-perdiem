@@ -11,8 +11,8 @@ See [../../REQUIREMENTS.md](../../REQUIREMENTS.md) (§4.3, §6.4) and
 
 | Story ID    | Title                                  | Reqs            | Status      |
 | ----------- | -------------------------------------- | --------------- | ----------- |
-| PD-REP-001  | De-duplication & per-crew aggregation  | R7, F9, F10     | 📝 Planned  |
-| PD-REP-002  | Master report + exception report output| F11, F12        | 📝 Planned  |
+| PD-REP-001  | De-duplication & per-crew aggregation  | R7, F9, F10     | ✅ Done     |
+| PD-REP-002  | Master report + exception report output| F11, F12        | ✅ Done     |
 
 **Inputs:** per-day `DayVerdict`s from [Validation](../Validation/overview.md)
 across **all** submissions (Posting Base + Late + re-submissions).

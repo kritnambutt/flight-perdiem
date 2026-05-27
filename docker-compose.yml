@@ -1,0 +1,92 @@
+services:
+
+  # ── Postgres ──────────────────────────────────────────────────────────────
+  # Runs the database. Port 5432 bound to localhost so local-dev targets
+  # (make worker-dev, make api-dev) can reach it at 127.0.0.1:5432 without
+  # going through the container network.
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_ADMIN_USER}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── DB init (one-shot: creates perdiem role + DB) ─────────────────────────
+  # Waits for the db container to be healthy, then creates the perdiem role and
+  # database if they don't already exist, then exits. api and worker wait for it.
+  db-init:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${DB_ADMIN_PASSWORD}
+      DB_ADMIN_USER: ${DB_ADMIN_USER}
+      DB_HOST: db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: /init-db.sh
+    volumes:
+      - ./docker/init-db.sh:/init-db.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # ── API (FastAPI + Uvicorn, serves SPA + REST) ─────────────────────────────
+  # Bound to 127.0.0.1 only — Cloudflare Tunnel on the host reaches it at
+  # localhost:8000 without exposing any port to the LAN or internet.
+  api:
+    build: .
+    command: /entrypoint.sh
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://perdiem:${POSTGRES_PASSWORD}@db:5432/perdiem
+      ROSTER_CACHE_DIR: /data/cache
+      UPLOADS_DIR: /data/uploads
+      REPORTS_DIR: /data/reports
+      SPA_DIR: /app/frontend/dist
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    volumes:
+      - roster-cache:/data/cache
+      - uploads:/data/uploads
+      - reports:/data/reports
+      # gcloud user credentials (set up once on the Pi via scripts/auth_drive.py)
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  # ── Worker (background pipeline executor) ─────────────────────────────────
+  # Same image as api — different command, no port binding.
+  worker:
+    build: .
+    command: python -m perdiem.worker
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://perdiem:${POSTGRES_PASSWORD}@db:5432/perdiem
+      ROSTER_CACHE_DIR: /data/cache
+      UPLOADS_DIR: /data/uploads
+      REPORTS_DIR: /data/reports
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    volumes:
+      - roster-cache:/data/cache
+      - uploads:/data/uploads
+      - reports:/data/reports
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  roster-cache:
+  uploads:
+  reports:

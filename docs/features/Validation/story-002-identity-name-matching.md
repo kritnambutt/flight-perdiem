@@ -97,20 +97,22 @@ def check_identity(claim: Claim, roster: ExtractedRoster, cfg) -> IdentityResult
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** `normalize()` (Thai/English aware) + tests.
-2. 📝 **TODO** Surname prefix/initial matcher (the `Lucksnara S.` case).
-3. 📝 **TODO** Fuzzy fallback (e.g. RapidFuzz token-set ratio) + threshold.
-4. 📝 **TODO** Authority policy combining staff ID + name → MATCH/REVIEW/REJECT.
-5. 📝 **TODO** Bilingual fixture tests (initials, order swap, diacritics).
+1. ✅ **DONE** `normalize()` (diacritics, lowercase, collapse spaces, strip punctuation).
+2. ✅ **DONE** Surname prefix/initial matcher (the `Lucksnara S.` case) + first/last order swap.
+3. ✅ **DONE** Fuzzy fallback via `rapidfuzz==3.9.7` token-set ratio + tunable threshold.
+4. ✅ **DONE** Authority policy: ID mismatch → REJECT; name below threshold with matching ID → REVIEW.
+5. ✅ **DONE** Tests: initials, order swap, diacritics, missing name, fuzzy above/below threshold (17 tests, all pass).
 
 ## 🏗 Structure
 
 ```
 backend/perdiem/engine/
 └── identity.py       # normalize + name match + check_identity (R5/R5a)
+tests/engine/
+└── test_identity.py  # 17 unit tests
 ```
 
 ## 📌 Notes / Open Questions
 
-- Pick the fuzzy library (RapidFuzz is fast, MIT, pure-wheel on arm64).
-- Tune `name_match_threshold` against a sample of real name variants.
+- `rapidfuzz==3.9.7` chosen (MIT, pure-wheel on arm64) and pinned in `requirements.txt`.
+- `name_match_threshold` defaults to `0.8`; tune against real name variants when more data is available.

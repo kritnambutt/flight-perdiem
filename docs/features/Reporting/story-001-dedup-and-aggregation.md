@@ -99,19 +99,21 @@ def aggregate(verdicts: list[DayVerdict], claims: list[Claim], cfg) -> list[Crew
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** Merge + unique-key dedup with audit back-links.
-2. 📝 **TODO** Consecutive-day range merger.
-3. 📝 **TODO** Day/amount computation from config rate.
-4. 📝 **TODO** Crew-stated vs proven reconciliation notes.
-5. 📝 **TODO** Tests reproducing sample FEBRUARY/MARCH 26 figures.
+1. ✅ **DONE** Merge all claim_verdicts; unique `(staff_id, date)` dedup — first writer wins.
+2. ✅ **DONE** `_merge_consecutive()` collapses sorted dates into consecutive `(start, end)` ranges.
+3. ✅ **DONE** `days = len(unique dates)`; `total_thb = days × rate` (from `RulesConfig.rate_thb_per_day`).
+4. ✅ **DONE** Reconciliation note: when claimed count > payable count, difference flagged in `remark`.
+5. ✅ **DONE** Tests: dedup, range grouping, amounts, back-claim remarks, multi-crew ordering (23 tests, all pass).
 
 ## 🏗 Structure
 
 ```
 backend/perdiem/engine/
-└── dedup.py          # aggregate(): dedup + range merge + amounts (R7, F9, F10)
+└── dedup.py          # aggregate() + _merge_consecutive() (R7, F9, F10)
+tests/engine/
+└── test_dedup.py     # 23 unit tests
 ```
 
 ## 📌 Notes / Open Questions
 
-- Confirm rate is flat 400 THB/day vs rank/route dependent (REQUIREMENTS §9 Q1).
+- Rate confirmed flat **400 THB/day** in `RulesConfig.rate_thb_per_day`. Update if rank/route-dependent (REQUIREMENTS §9 Q1) — one field to change, no logic rewrite needed.

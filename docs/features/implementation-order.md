@@ -117,6 +117,23 @@ flowchart TD
 
 ---
 
+## 🤖 Enhancement track — EP-ML (Roster Intelligence)
+
+A **post-MVP** epic that fixes the real validation failure (OCR extraction) with ML and
+learns from the years of admin-validated history. It layers on top of the pipeline above —
+it does not block the MVP. See [./RosterIntelligence/overview.md](./RosterIntelligence/overview.md)
+and [../analysis/ml-training-for-roster-validation.md](../analysis/ml-training-for-roster-validation.md).
+
+Two **parallel** tracks (not one sequence):
+
+| Track | Stories | Note |
+| ----- | ------- | ---- |
+| A — validation correctness (ship now) | [PD-ML-001](./RosterIntelligence/story-001-deterministic-floor-and-instrumentation.md) deterministic floor + instrumentation | Independent fast win; **not** a prerequisite for Track B |
+| B — ML data → models | [PD-ML-002](./RosterIntelligence/story-002-workbook-dataset-builder.md) dataset (first ML build) → [PD-ML-003](./RosterIntelligence/story-003-eval-harness-and-baseline.md) eval/baseline → [PD-ML-004](./RosterIntelligence/story-004-triage-and-reason-classifier.md) triage (text-only, pull forward) → [PD-ML-005](./RosterIntelligence/story-005-doc-type-quality-classifier.md) doc-type → [PD-ML-006](./RosterIntelligence/story-006-donut-roster-reader.md) Donut reader *(gated on PD-ML-003 baseline)* → [PD-ML-007](./RosterIntelligence/story-007-pluggable-ml-extractor-backend.md) pluggable backend | Labels come from the **three workbooks**, not the DB |
+
+> **Decision gate:** build PD-ML-006 (Donut) only if PD-ML-003's baseline shows extraction is
+> still the bottleneck after PD-ML-001 + PD-ML-004.
+
 ## ⏩ Parallelisation hints
 
 - **PD-PLAT-001 (DB)** can be developed alongside Milestone 1 by a second person.

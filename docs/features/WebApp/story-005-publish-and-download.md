@@ -86,7 +86,8 @@ backend/perdiem/web/routes/reports.py
 frontend/src/pages/ResultsPage.tsx      # download controls
 ```
 
-## 📌 Notes / Open Questions
+## 📌 Notes
 
-- Download a fresh file vs write back into the shared master workbook in place?
-  (ties to PD-REP-002 Open Q on in-place vs fresh file).
+- **Fresh file confirmed** — both reports are generated on demand as `.xlsx`
+  bytes and streamed as HTTP attachments. No in-place editing, no locking, no
+  shared master workbook to maintain. See PD-REP-002 for the writer interface.

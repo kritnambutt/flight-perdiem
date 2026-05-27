@@ -25,7 +25,8 @@ So that the roster can be OCR'd and the claim validated against flown duty
 ### Pre-conditions
 
 - `Claim.roster_links[]` are populated (PD-ING-001).
-- Service account can read the linked Drive files.
+- `gcloud auth login --enable-gdrive-access --account=kantaphajasuwan@airasia.com`
+  has been run once on the machine (`scripts/auth_drive.py` verifies this).
 - A persistent `roster-cache` volume exists.
 
 ### Scope
@@ -89,19 +90,19 @@ def fetch_rosters(claim: Claim) -> list[RosterRef]:
 
 ### Storage
 
-| Setting        | Value                                  |
-| -------------- | -------------------------------------- |
-| Cache location | `roster-cache` volume → `/data/cache`  |
-| Key convention | `<file_id>.<ext>`                      |
-| Auth           | Google service account (read-only)     |
+| Setting        | Value                                                       |
+| -------------- | ----------------------------------------------------------- |
+| Cache location | `roster-cache` volume → `/data/cache`                       |
+| Key convention | `<file_id>.<ext>`                                           |
+| Auth           | gcloud user token — `gcloud auth print-access-token` at runtime |
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** Drive URL → file-id parser (multiple URL shapes) + tests.
-2. 📝 **TODO** Drive download via service account; content-type sniffing.
-3. 📝 **TODO** File-id cache (skip if present); store `RosterRef`.
-4. 📝 **TODO** Bounded retry + clear review flags for failures.
-5. 📝 **TODO** Tests with mocked Drive responses (image, pdf, 403, html).
+1. ✅ **DONE** Drive URL → file-id parser (multiple URL shapes) + tests.
+2. ✅ **DONE** Drive download using `gcloud auth print-access-token --account=kantaphajasuwan@airasia.com`; content-type sniffing.
+3. ✅ **DONE** File-id cache (skip if present); store `RosterRef`.
+4. ✅ **DONE** Bounded retry + clear review flags for failures.
+5. ✅ **DONE** Tests with mocked Drive responses (image, pdf, 403, html) — 18 tests, all passing.
 
 ## 🏗 Structure
 

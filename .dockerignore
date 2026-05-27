@@ -1,0 +1,42 @@
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/*.egg-info/
+**/.venv/
+**/venv/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+**/.pnpm-store/
+**/*.tsbuildinfo
+
+# Secrets & env
+.env
+.env.*
+secrets/
+
+# Git & editor
+.git/
+.github/
+.gitignore
+.claude/
+.vscode/
+.idea/
+
+# Docs & tests (not needed in image)
+docs/
+**/*.md
+!README.md
+
+# Runtime data
+data/
+roster-cache/
+output/
+
+# OS
+.DS_Store
+Thumbs.db

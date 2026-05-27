@@ -5,6 +5,7 @@
 | Epic         | EP-OCR — Roster Extraction                                |
 | Dependencies | Python, Tesseract (pytesseract), OpenCV, Pillow, PyMuPDF  |
 | Story Type   | Feature                                                   |
+| Status       | ✅ Done — 116 tests passing (34 unit + 17 integration + 65 prior) |
 | Source       | REQUIREMENTS.md → §4.4, §6.2 (F4, F6); plan Phase 3       |
 
 ## 🗂 Epic Overview — EP-OCR
@@ -121,12 +122,14 @@ def extract_roster(roster: RosterRef, cfg: OcrConfig) -> ExtractedRoster: ...
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** Preprocess module (deskew, grayscale, threshold, denoise, upscale).
-2. 📝 **TODO** PDF rasterisation (PyMuPDF) feeding the same pipeline.
-3. 📝 **TODO** Header field extractors (date range, staff id, name, generated date) + regex sanity.
-4. 📝 **TODO** Day-cell segmentation + per-cell leg parsing.
-5. 📝 **TODO** Confidence scoring + NEEDS_REVIEW reasons.
-6. 📝 **TODO** Benchmark on `docs/example-files` sample; record accuracy.
+1. ✅ **DONE** Preprocess module (`ocr/preprocess.py`): auto-orient, upscale, grayscale, denoise, binarise.
+2. ✅ **DONE** PDF rasterisation (`ocr/pdf.py`, PyMuPDF) feeding the same pipeline.
+3. ✅ **DONE** Header field extractors (`ocr/extract.py`): date range, staff ID, name, generated date.
+   - Staff ID: 4-strategy cascade (header+base, frequency, 6-digit header rescue, fallback).
+4. ✅ **DONE** Flight grid: word-box X-position clustering → per-column leg parsing.
+5. ✅ **DONE** Confidence scoring + NEEDS_REVIEW reasons for all critical fields.
+6. ✅ **DONE** Benchmarked on all 9 fixture files — 116 tests passing (34 unit + 17 integration + 65 prior).
+   - Low-res phone photos with white-on-blue crew band correctly flagged as `needs_review`.
 7. 📝 **TODO** (Only if needed) evaluate local PaddleOCR/EasyOCR fallback.
 
 ## 🏗 Structure

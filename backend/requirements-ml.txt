@@ -1,0 +1,14 @@
+# Off-Pi ML training dependencies — NOT installed on the Raspberry Pi.
+# Install on a dev machine (Apple Silicon, NVIDIA GPU, or Google Colab) before
+# running scripts/train_donut.py (PD-ML-006).
+#
+#   pip install -r backend/requirements-ml.txt
+#
+# The main requirements.txt covers only the Pi runtime deps (Tesseract, OpenCV,
+# numpy, etc.); these are never imported by the engine or worker.
+
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+transformers>=4.38.0
+accelerate>=0.27.0

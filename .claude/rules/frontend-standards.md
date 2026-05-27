@@ -1,6 +1,6 @@
 # Frontend Standards
 
-Standards for the frontend, built with **React + Vite + pnpm + Tailwind CSS**
+Standards for the frontend, built with **React + Vite + pnpm + Tailwind CSS v4**
 (TypeScript). Read this before working on any file under `frontend/`.
 
 ## Project Structure
@@ -8,19 +8,47 @@ Standards for the frontend, built with **React + Vite + pnpm + Tailwind CSS**
 ```
 frontend/
 ├── src/
-│   ├── pages/        # one screen per route (RunPage, ResultsPage, ExceptionsPage, ConfigPage, AuditPage, LoginPage)
-│   ├── components/   # reusable UI (RosterPreview, ProgressBar, VerdictBadge, DecisionControls, …)
-│   ├── hooks/        # useRun, usePolling, useAuth
-│   ├── contexts/     # AuthContext
-│   ├── lib/          # API client + helpers
+│   ├── pages/           # one screen per route (RunPage, ResultsPage, ExceptionsPage, ConfigPage, AuditPage, LoginPage)
+│   ├── components/
+│   │   ├── ui/          # Catalyst UI Kit components (copy-paste, NOT an npm package)
+│   │   └── *.tsx        # project-specific widgets (VerdictBadge, ProgressBar, …)
+│   ├── hooks/           # useRun, usePolling, useAuth
+│   ├── contexts/        # AuthContext
+│   ├── lib/             # API client + helpers
 │   ├── config/  types/  styles/
-│   ├── App.tsx       # router + layout
+│   ├── App.tsx          # router + StackedLayout
 │   └── main.tsx
-└── index.html  vite.config.ts  tailwind.config.ts  postcss.config.js
+└── index.html  vite.config.ts
 ```
 
 - Page-level screens go in `src/pages/`; shared widgets in `src/components/`.
+- Catalyst UI primitives live in `src/components/ui/` — edit them in place when needed.
 - The API client lives in `src/lib/`; all network calls go through it.
+
+## UI Components — Catalyst UI Kit (`src/components/ui/`)
+
+Copy-pasted from `/docs/../templates/catalyst-ui-kit/typescript/`. **Not an npm package** —
+files live directly in the repo and can be modified freely. This is the **only** UI kit;
+do not add component libraries (flowbite-react, MUI, etc.) — extend Catalyst or use native
+HTML elements styled with Tailwind instead.
+
+Key components available:
+- `Button` — solid/outline/plain, many color variants; pass `color="blue"`, `color="green"`, etc.
+- `Badge` / `BadgeButton` — status chips with semantic colours.
+- `Field`, `Label`, `Description`, `ErrorMessage`, `FieldGroup`, `Fieldset` — accessible form layout.
+- `Input` — styled text/date input wrapping Headless UI; supports `type="month"` (used for the
+  Cycle month picker — a native month+year picker, no extra dependency needed).
+- `Heading`, `Subheading` — page/section titles in zinc scale.
+- `Text`, `TextLink`, `Strong` — body copy styles.
+- `Divider` — `<hr>` with optional `soft` variant.
+- `Navbar`, `NavbarItem`, `NavbarSection`, `NavbarSpacer`, `NavbarDivider` — top nav with animated active indicator.
+- `StackedLayout` — full-page shell with header + mobile sidebar drawer.
+- `Link` — wraps `react-router-dom`'s `<Link>` for internal routes; falls back to `<a>` for external URLs.
+
+Dependencies Catalyst needs: `@headlessui/react`, `clsx`, `motion`.
+
+Design language: **zinc scale** (zinc-950 text, zinc-100 backgrounds, zinc-950/10 borders).
+Use `dark:` variants consistently. Prefer Catalyst components over raw Tailwind for interactive elements.
 
 ## Code Style
 
@@ -37,18 +65,36 @@ frontend/
 
 - The app talks to the FastAPI backend on the **same origin** (`/api/...`) — no
   CORS layer. In dev, Vite proxies `/api` to `http://localhost:8000`.
-- Use a query/fetch hook layer (e.g. React Query) for server state; handle
-  loading/error states explicitly.
+- Use React Query for server state; handle loading/error states explicitly.
 - Long runs are **polled** via `GET /api/runs/{id}` (see `usePolling`); show live
   progress + counts. Never block the UI on a run.
 - Global state (auth) via Context; keep other state local.
 
-## Styling (Tailwind)
+## Styling (Tailwind v4)
 
-- Tailwind CSS, **mobile-first**; utility-first classes; theme in
-  `tailwind.config.ts`. Tailwind directives live in `src/styles/index.css`,
-  imported once in `main.tsx`.
+- Tailwind CSS v4, **mobile-first**; utility-first classes. No `tailwind.config.ts` —
+  configuration is CSS-first via `src/styles/index.css` (imported once in `main.tsx`).
+- Use Catalyst's zinc-based design tokens; avoid one-off colours.
 - Consistent, responsive design; avoid ad-hoc inline styles.
+
+## Dark / light mode
+
+- **Class-based**, not `prefers-color-scheme`. `src/styles/index.css` declares
+  `@custom-variant dark (&:where(.dark, .dark *))`, so `dark:` utilities activate only
+  when a `.dark` class is present on `<html>`.
+- `ThemeContext` (`src/contexts/ThemeContext.tsx`) owns the theme: it toggles `.dark`
+  on `<html>` and persists the choice to `localStorage` under the `theme` key.
+- An anti-FOUC script in `index.html` applies the saved/system theme **before paint**.
+  First-time visitors fall back to the OS `prefers-color-scheme`; after that the user's
+  explicit toggle wins.
+- The navbar exposes a sun/moon `ThemeToggle` (in `App.tsx`).
+- **Every screen must render clearly in BOTH modes.** When you add bespoke chrome
+  (cards, tables, inputs not from Catalyst), always pair light + dark classes, e.g.
+  `bg-white dark:bg-zinc-900`, `text-zinc-900 dark:text-white`,
+  `ring-zinc-950/5 dark:ring-white/10`. Catalyst components already ship dark variants —
+  prefer them over hand-rolled markup.
+- `color-scheme` is set per mode in `index.css` so native controls (scrollbars, the
+  date-picker popup, file-input button) match the active theme.
 
 ## PII & auth
 
@@ -59,6 +105,7 @@ frontend/
 ## Accessibility
 
 - Semantic HTML, keyboard navigation, focus management, adequate contrast, alt text.
+- Catalyst components (built on Headless UI) handle ARIA roles automatically.
 
 ## Code Quality
 

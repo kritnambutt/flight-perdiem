@@ -11,7 +11,7 @@ See [../../architecture/architecture.md](../../architecture/architecture.md) and
 
 | Story ID    | Title                                  | Reqs            | Status      |
 | ----------- | -------------------------------------- | --------------- | ----------- |
-| PD-PLAT-001 | PostgreSQL schema & persistence        | N1, N2          | 📝 Planned  |
+| PD-PLAT-001 | PostgreSQL schema & persistence        | N1, N2          | ✅ Done     |
 | PD-PLAT-002 | Docker + Cloudflare deployment on Pi 5 | N8              | 📝 Planned  |
 
 **Key context**

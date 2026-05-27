@@ -1,6 +1,6 @@
 ---
 name: task-implementer
-description: Implements a single task from a feature doc (docs/features/*.md), one at a time, following the project's verification checklist before marking it done. Use when the user wants to execute a specific task/subtask from a story.
+description: Implements a single task from a feature doc (docs/features/*.md), one at a time, following the project's verification checklist before marking it done. Use when the user says "implement this story", "help implement story X", "implement task", or asks to execute/build a specific task or subtask from a docs/features story file.
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 

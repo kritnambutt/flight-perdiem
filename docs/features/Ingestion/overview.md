@@ -10,7 +10,7 @@ See [../../REQUIREMENTS.md](../../REQUIREMENTS.md) (§4 Data Sources, §6.1) and
 
 | Story ID    | Title                                         | Reqs        | Status      |
 | ----------- | --------------------------------------------- | ----------- | ----------- |
-| PD-ING-001  | Form response ingestion (Posting Base + Late) | F1, F2      | 📝 Planned  |
+| PD-ING-001  | Form response ingestion (Posting Base + Late) | F1, F2      | ✅ Done     |
 | PD-ING-002  | Roster attachment retrieval from Drive        | F3          | 📝 Planned  |
 
 **Pipeline position:** `Ingest → Extract (OCR) → Validate → Aggregate → Report`.
@@ -21,6 +21,9 @@ which [RosterOCR](../RosterOCR/overview.md) then reads.
 - Two forms feed the same cycle: **Posting Base** (on-time) and **Late
   Submission** (back-claims). Both must be ingested and merged.
 - Claims are reconciled one month in arrears (working in March → claim February).
-- All Google access uses the service account `kantaphajasuwan@airasia.com`
-  (free Sheets/Drive API tier).
+- **No Google Sheets API** — AirAsia org policy blocks external access.
+  Admin downloads the Excel files manually and uploads them to the system.
+- **Drive access** (roster images) uses `kantaphajasuwan@airasia.com` gcloud
+  user credentials (`gcloud auth login --enable-gdrive-access`). Confirmed
+  working — downloads real roster images via the Drive API.
 - Forms mix Thai/English; column headers are partly Thai.

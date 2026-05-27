@@ -92,27 +92,31 @@ So that I can act on just the problem claims
 ### Interface
 
 ```python
-def write_master(results: list[CrewResult], month: str, workbook_path: str) -> None: ...
-def write_exceptions(verdicts: list[DayVerdict], claims, month: str, out_path: str) -> None: ...
+def write_master(results: list[CrewResult], month: str) -> bytes:
+    """Return master report .xlsx as bytes for HTTP streaming download."""
+
+def write_exceptions(verdicts: list[DayVerdict], claims: list[Claim], month: str) -> bytes:
+    """Return exception report .xlsx as bytes for HTTP streaming download."""
 ```
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** openpyxl writer for the month sheet (columns + banner) preserving history.
-2. 📝 **TODO** Period range formatter (newline-joined, DD Month YYYY).
-3. 📝 **TODO** Idempotent month-sheet replace keyed by staff ID.
-4. 📝 **TODO** Exception report writer (rule, source, roster ref, confidence).
-5. 📝 **TODO** Tests: history untouched, re-run no-op, multi-range periods.
+1. ✅ **DONE** `write_master()` — openpyxl workbook with status banner (row 1), header row (row 2), and data rows; all §4.3 columns present.
+2. ✅ **DONE** `format_periods()` — newline-joined `DD Month YYYY - DD Month YYYY` text, single-day shorthand.
+3. ✅ **DONE** Idempotency by design — each call generates a fresh workbook from current `CrewResult[]`; no in-place editing.
+4. ✅ **DONE** `write_exceptions()` — INVALID + NEEDS_REVIEW verdicts with rule, reason, source ref, claimed date, roster link; VALID/VALID_BACKCLAIM excluded.
+5. ✅ **DONE** Tests: bytes returned, correct sheet name, header row, crew data, multi-range period, sequential item numbers, empty cycle (25 tests, all pass).
 
 ## 🏗 Structure
 
 ```
 backend/perdiem/engine/
-└── report.py         # write_master + write_exceptions (F11, F12)
+└── report.py         # write_master + write_exceptions + format_periods (F11, F12)
+tests/engine/
+└── test_report.py    # 25 unit tests
 ```
 
 ## 📌 Notes / Open Questions
 
-- Write into the **existing** workbook in place, or emit a fresh file the admin
-  pastes/imports? (Affects locking + backup strategy.)
-- `Cross Checked by Supervisor` — set automatically after web review (WebApp), or left blank?
+- Both reports generated on demand as bytes — no file locking, no in-place editing. Admin downloads via web UI (PD-WEB-005). ✅ Confirmed.
+- `Cross Checked by Supervisor` column left blank; filled after web review by the WebApp epic (PD-WEB-003). Pending implementation.

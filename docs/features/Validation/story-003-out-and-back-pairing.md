@@ -94,20 +94,22 @@ def find_pairs(grid: dict[int, list[Leg]], month: date, cfg) -> tuple[list[Pair]
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** Per-day qualifying-leg flags using PD-VAL-001 predicates.
-2. 📝 **TODO** Greedy N / N+1 pairing with calendar-date construction.
-3. 📝 **TODO** Month/year boundary handling (31 Jan → 1 Feb).
-4. 📝 **TODO** Emit incomplete days as review reasons.
-5. 📝 **TODO** Tests: single pair, multiple pairs, boundary pair, orphan out/return.
+1. ✅ **DONE** `is_outbound()` / `is_return()` leg predicates (shared with `rules.py`).
+2. ✅ **DONE** Greedy N / N+1 forward pass; calendar dates built from `roster_start`.
+3. ✅ **DONE** Month/year boundary handling (Jan 31 → Feb 1 via calendar rollover arithmetic).
+4. ✅ **DONE** Orphan outbounds and returns collected in `unmatched_days` for NEEDS_REVIEW.
+5. ✅ **DONE** Tests: single pair, multiple pairs, boundary pair, orphan out/return, greedy ordering (13 tests, all pass).
 
 ## 🏗 Structure
 
 ```
 backend/perdiem/engine/
-└── pairing.py        # find_pairs (R3, F8)
+└── pairing.py        # find_pairs + is_outbound/is_return (R3, F8)
+tests/engine/
+└── test_pairing.py   # 13 unit tests
 ```
 
 ## 📌 Notes / Open Questions
 
-- Confirm same-day turnaround handling (overnight required for per diem?).
-- Confirm how a boundary pair's 2 days split across cycle vs back-claim reporting.
+- Same-day turnaround (no overnight): not paired; treated as an orphan leg → NEEDS_REVIEW. **Confirm with stakeholders** whether this is the correct policy.
+- Boundary pair day-attribution (which cycle month each day belongs to): handled downstream by R8 in `rules.py` via `month_route()`.

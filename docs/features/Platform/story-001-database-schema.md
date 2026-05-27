@@ -93,24 +93,32 @@ Indexes: `claims(run_id)`, `verdicts(claim_id)`, `verdicts(staff_id, claimed_dat
 
 ## 🔨 Implementation Plan
 
-1. 📝 **TODO** SQLAlchemy models for the six tables + relationships.
-2. 📝 **TODO** Alembic init + first migration; `upgrade head` from empty.
-3. 📝 **TODO** Indexes (esp. dedup support).
-4. 📝 **TODO** Repository helpers (create run, write verdicts, record override/audit, read config).
-5. 📝 **TODO** Tests on a disposable Postgres (db container / testcontainers).
+1. ✅ **DONE** SQLAlchemy 2.x `Mapped`-column ORM models for all 6 tables; JSONB, UUID, `timestamptz`; FK cascades.
+2. ✅ **DONE** `alembic.ini` + `migrations/env.py`; migration `001_initial_schema.py` verified via `alembic upgrade head --sql`.
+3. ✅ **DONE** Indexes: `ix_claims_run_id`, `ix_claims_staff_id`, `ix_verdicts_claim_id`, `ix_verdicts_staff_id_claimed_date` (dedup support), `ix_overrides_claim_id`, `ix_audit_run_id`.
+4. ✅ **DONE** `repository.py`: `create_run`, `update_run_status`, `create_claim`, `write_verdicts` (idempotent replace), `create_override`, `write_audit`, `get_config`/`set_config`/`get_all_config`.
+5. ✅ **DONE** 20 integration tests in `tests/db/test_repository.py` (testcontainers postgres:16-alpine); skipped automatically if Docker unavailable. All 263 tests pass.
 
 ## 🏗 Structure
 
 ```
-backend/perdiem/db/
-├── models.py
-├── session.py
-└── migrations/        # alembic
+backend/
+├── alembic.ini
+└── perdiem/db/
+    ├── models.py      # ORM: Run, Claim, Verdict, Override, Audit, Config
+    ├── session.py     # engine + SessionLocal + get_session() FastAPI dep
+    ├── repository.py  # data-access helpers
+    └── migrations/
+        ├── env.py
+        ├── script.py.mako
+        └── versions/001_initial_schema.py
+tests/db/
+├── conftest.py        # testcontainers fixture + per-test rollback
+└── test_repository.py # 20 integration tests
 ```
 
 ## 📌 Notes / Open Questions
 
-- **Migration tool:** plan currently uses **Alembic**. (User raised Prisma —
-  unresolved: Prisma-only via prisma-client-py vs Prisma migrations + SQLAlchemy.
-  Settle before building this story.)
-- Keep a versioned config history table for run-time reconstruction (see PD-WEB-004).
+- **Migration tool:** settled on **Alembic + SQLAlchemy**. Prisma option dropped — no practical advantage for a Python-only stack on Pi 5. ✅ Resolved.
+- `staff_id` is denormalized onto the `verdicts` table to support the `(staff_id, claimed_date)` dedup index without a join.
+- Config history (for PD-WEB-004 audit): the `config` table stores the current value; a versioned history can be added as a follow-up migration when PD-WEB-004 is built.

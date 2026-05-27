@@ -35,11 +35,30 @@ report (`Posting Perdiem of CCD 2026.xlsx`).
 
 - **Cabin crew (submitter):** fills the Google Form, attaches their roster image.
 - **Admin / validator (system user):** operates the system through the **web
-  frontend** — triggers a cycle run, watches progress, reviews flagged claims,
-  approves/overrides, and publishes/downloads the result report.
-- **System service account:** Google account
-  `kantaphajasuwan@airasia.com` — the account authorised to read the form
-  response sheets and the Google Drive roster attachments.
+  frontend** — downloads the monthly Excel files from Google Sheets, uploads
+  them to the system, triggers a cycle run, watches progress, reviews flagged
+  claims, approves/overrides, and downloads the result report.
+- **Google Drive access:** `kantaphajasuwan@airasia.com` via **gcloud user
+  credentials with Drive scope**. The Pi authenticates as this account using a
+  token obtained by running once:
+  `gcloud auth login --enable-gdrive-access --account=kantaphajasuwan@airasia.com`
+  At runtime the engine calls `gcloud auth print-access-token` to get a fresh
+  token — no manual refresh needed.
+
+> **Why gcloud user credentials, not a service account or OAuth client:**
+> - AirAsia's org policy blocks external Drive sharing and third-party OAuth app
+>   authorisation.
+> - The `perdiem-reader` service account (outside the org) cannot access
+>   org-owned Drive files.
+> - `gcloud auth login --enable-gdrive-access` uses Google's own OAuth client
+>   ID, which AirAsia cannot block — it is the same credential used for all
+>   `gcloud` commands.
+> - `kantaphajasuwan@airasia.com` already has access to the roster files (it
+>   owns the form). The Pi downloads files *as* that account, which is not
+>   external sharing.
+> - **Fallback:** if the AirAsia org blocks even this, the system flags the
+>   failed downloads and the admin uploads the roster images manually via the
+>   web UI.
 
 > The system is delivered as a **web application self-hosted on the Raspberry
 > Pi** (see §6.6 and the implementation plan). Staff use a browser; no CLI
@@ -50,9 +69,16 @@ report (`Posting Perdiem of CCD 2026.xlsx`).
 
 ## 4. Data Sources (example files in `docs/example-files/`)
 
+> **How files reach the system:** The admin logs into Google Sheets as
+> `kantaphajasuwan@airasia.com`, downloads the current month's response
+> workbook as `.xlsx`, and uploads it to the system via the web UI when
+> starting a run. The system reads the uploaded file directly — no Google
+> Sheets API call is made.
+
 ### 4.1 Posting Base form responses — `Posting Base Perdiem & Sector Allowance (Responses).xlsx`
 On-time claims. One worksheet per month (`MARCH 26`, `FEBRUARY 26`, …) plus the
-raw `Form Responses 26` sheet. Columns:
+raw `Form Responses 26` sheet. **Provided by admin via manual download from
+Google Sheets before each run.** Columns:
 
 | # | Column (raw, Thai where applicable) | Meaning |
 |---|--------------------------------------|---------|
@@ -74,7 +100,8 @@ raw `Form Responses 26` sheet. Columns:
 
 ### 4.2 Late Submission form responses — `Late Submission Perdiem & Irregularity of Sector Allowance (Responses).xlsx`
 Back-claims for earlier months; must also be folded into the cycle being
-reconciled. One worksheet per month + raw `Form Responses 80`. Columns mirror
+reconciled. One worksheet per month + raw `Form Responses 80`. **Provided by
+admin via manual download from Google Sheets before each run.** Columns mirror
 4.1 with: `Operating Base`, `กรุณาเลือกประเภทการเบิกที่ล่าช้ากว่ากำหนด` (late
 claim type), `กรุณาระบุเดือนที่ทำการเบิกล่าช้า` (late month), claimed day list,
 roster/medical-certificate attachment link, `Status`, `Remark`.
@@ -149,7 +176,9 @@ HKT→DMK on day _N+1_**. When an outbound DMK→HKT is found, the system must
 The roster's **Generated date must be later than the claimed per diem date(s)**
 — i.e. the snapshot was produced after the flight, so it reflects flown (not
 merely scheduled) duty. Each red-marked / claimed day must be **earlier than**
-the generated date. Days on/after the generated date → flag as unproven.
+the generated date. A generated date that **precedes** a claimed day is a hard
+**INVALID** (the roster predates the flight and cannot prove flown duty) — not a
+review.
 
 ### R5 — Document identity match
 The roster must belong to the submitter:
@@ -180,7 +209,11 @@ staff ID, which is authoritative.
 
 ### R6 — Period coverage
 The roster's header **date range must cover** every claimed day, and the claimed
-days (form field 4.1 col 10 / red rectangle) must fall inside that range.
+days (**form field 4.1 col 10 is the authoritative source**; a red rectangle on
+the roster is an optional cross-check) must fall inside that range.
+If a red rectangle is present and its detected days differ from the form's
+col-10 list, the claim is flagged for human review but not automatically
+rejected.
 
 ### R7 — Uniqueness / de-duplication
 Crew may submit the **same claim multiple times** (re-submissions, corrections,
@@ -200,12 +233,20 @@ submissions collapse to a single payable day.
 ## 6. Functional Requirements
 
 ### 6.1 Ingestion
-- **F1.** Authenticate to Google as `kantaphajasuwan@airasia.com` and read both
-  form-response workbooks (Posting Base + Late Submission) for the target month.
-- **F2.** For each response, parse: timestamp, email, staff ID, name, position,
-  base, claim type, claim month, claimed day list, roster link(s), remarks.
-- **F3.** Download every roster attachment from the Drive link(s); support
-  multiple links per response. Handle JPEG/PNG/PDF.
+- **F1.** Accept two uploaded `.xlsx` files from the admin — one Posting Base
+  workbook and one Late Submission workbook. Validate that each file is a
+  recognised response workbook before proceeding (check for expected sheet names
+  and header columns); reject with a clear error if the wrong file is uploaded.
+- **F2.** For each response row, parse: timestamp, email, staff ID, name,
+  position, base, claim type, claim month, claimed day list, roster link(s),
+  remarks. Handle both workbook layouts (column sets differ between the two
+  forms) and tolerate missing/blank cells gracefully.
+- **F3.** Download every roster attachment from the Google Drive link(s) in the
+  parsed rows using OAuth2 credentials for `kantaphajasuwan@airasia.com`
+  (stored at `secrets/drive-token.json`). Support multiple links per response;
+  handle JPEG/PNG/PDF. Extract the file ID from the Drive URL
+  (`drive.google.com/open?id=FILE_ID` or `/file/d/FILE_ID/`) and call the
+  Drive API `files.get(fileId, alt=media)` to stream the file to local storage.
 
 ### 6.2 Roster extraction (OCR)
 - **F4.** Extract from each roster: report **date range**, **staff ID**, **name**,
@@ -228,10 +269,14 @@ submissions collapse to a single payable day.
 - **F10.** Produce a per-month, per-crew result: validated `Period` range(s),
   `Days`, `Total Perdiem = Days × rate`, email, and a `REMARK` for exceptions
   (back-claim month, partial pair, etc.).
-- **F11.** Write/append into the master report shape (§4.3) — one worksheet per
-  month — without disturbing historical sheets.
-- **F12.** Produce an **exception report** listing every claim that was rejected
-  or needs review, with the specific failing rule, so the admin can act.
+- **F11.** Generate a downloadable **master report Excel file** (`.xlsx`) in the
+  shape of §4.3 — one worksheet per month. The file is made available for
+  download from the web UI (F20). It is generated fresh on demand; historical
+  months are preserved as separate sheets within the same file.
+- **F12.** Generate a downloadable **exception report Excel file** (`.xlsx`)
+  listing every claim that was rejected or needs review, with the specific
+  failing rule and reason, so the admin can act. Also available for download
+  from the web UI (F20).
 
 ### 6.5 Configuration
 - **F13.** Qualifying routes, flight-number set (R2), per diem rate, and the
@@ -246,9 +291,13 @@ whole per diem process from a browser — no command line.
 - **F14. Authentication:** staff sign in before use (the app handles sensitive
   PII). Support a simple login; Google sign-in restricted to allowed AirAsia
   accounts is acceptable.
-- **F15. Trigger a run:** a screen to **select the cycle month and start a run**;
-  the heavy work (download + OCR + validate) runs as a **background job** so the
-  page never blocks.
+- **F15. Trigger a run:** a screen where the admin:
+  1. Selects the **cycle month**.
+  2. **Uploads the two Excel files** — Posting Base and Late Submission — downloaded
+     manually from Google Sheets. The UI accepts `.xlsx` only and validates the
+     files before the run starts.
+  3. Clicks **Run**. The heavy work (parse → download rosters → OCR → validate)
+     runs as a **background job** so the page never blocks.
 - **F16. Live progress:** show run status and progress (queued → downloading →
   OCR → validating → done), with counts of processed / VALID / review / reject.
 - **F17. Results dashboard:** per-crew validated results (Period, Days, Total
@@ -259,8 +308,11 @@ whole per diem process from a browser — no command line.
 - **F19. Approve / override:** staff can approve, reject, or correct a flagged
   claim from the UI; the decision is recorded (who, when, why) and the result
   re-aggregates (idempotent, N2).
-- **F20. Publish / download:** export or download the master report sheet (§4.3)
-  and the exception report for the month.
+- **F20. Publish / download:** one-click download of two Excel files directly
+  from the browser:
+  - **Master report** (§4.3 shape) — payable per-crew list for the cycle month.
+  - **Exception report** — rejected / needs-review claims with failing rules.
+  Both files are generated on demand and served as `.xlsx` downloads.
 - **F21. Config screen:** view/edit qualifying routes, the rotating flight-number
   set, per diem rate, and thresholds (F13) from the UI.
 - **F22. Audit view:** browse the per-decision audit trail (rule applied, source
@@ -293,23 +345,40 @@ whole per diem process from a browser — no command line.
 
 ## 8. End-to-End Flow (target month = March, reconciling February claims)
 
+> **One-time Drive setup (Mac dev + Raspberry Pi):**
+> Run once on each machine:
+> ```bash
+> gcloud auth login --enable-gdrive-access \
+>   --account=kantaphajasuwan@airasia.com
+> ```
+> Opens a browser — log in as `kantaphajasuwan@airasia.com`, click Allow.
+> gcloud stores the token locally; `gcloud auth print-access-token` returns a
+> fresh token at any time without re-login. Re-run only if the session is
+> revoked.
+
 Staff drive the whole flow from the **web frontend**:
 
-1. Staff sign in and **select the cycle month**, then click **Run** (F14–F15).
-2. A background job reads Posting Base + Late Submission responses for that cycle.
-3. For each response: download roster image(s).
-4. OCR each roster → date range, staff ID, name, generated date, flight grid,
+1. Admin logs into Google Sheets as `kantaphajasuwan@airasia.com`, opens each
+   workbook, and **downloads the current month's sheet as `.xlsx`** (File →
+   Download → Microsoft Excel). Two files: Posting Base + Late Submission.
+2. Staff sign in to the web app, **select the cycle month**, **upload the two
+   Excel files**, then click **Run** (F14–F15). The system validates the files
+   before accepting the run.
+3. A background job parses both uploaded files → ingests all claim rows.
+4. For each response: download roster image(s) from Google Drive links via the
+   service account.
+5. OCR each roster → date range, staff ID, name, generated date, flight grid,
    red-marked days.
-5. Validate identity (R5), period coverage (R6), route + flight number (R1/R2),
+6. Validate identity (R5), period coverage (R6), route + flight number (R1/R2),
    out-and-back pairing (R3), generated-date proof (R4), month routing (R8).
-6. Merge all responses; de-duplicate by `(staff ID, date)` (R7).
-7. Compute `Days` and `Total Perdiem (THB)` per crew.
-8. The frontend shows **live progress**, then the **results dashboard** and the
+7. Merge all responses; de-duplicate by `(staff ID, date)` (R7).
+8. Compute `Days` and `Total Perdiem (THB)` per crew.
+9. The frontend shows **live progress**, then the **results dashboard** and the
    **exception review queue** (F16–F18).
-9. Staff review flagged claims, approve/override/correct (F19); results
-   re-aggregate idempotently.
-10. Staff **publish/download** the master report sheet and exception report
-    (F20). The master sheet is written without disturbing historical sheets.
+10. Staff review flagged claims, approve/override/correct (F19); results
+    re-aggregate idempotently.
+11. Staff click **Download** to get the master report `.xlsx` and exception
+    report `.xlsx` directly from the browser (F20).
 
 ---
 
@@ -317,14 +386,15 @@ Staff drive the whole flow from the **web frontend**:
 
 1. **Per diem rate** — confirmed as **400 THB/day** from sample data. Is it fixed
    or rank/route dependent?
-2. **Generated-date direction (R4)** — the sample file labelled "(correct
-   format)" has a generated date (09 Mar) *earlier* than its red-marked days
-   (27–28 Mar). Confirm the intended comparison: should the generated date be
-   **after** all claimed dates (proof of flown duty), and was this sample chosen
-   only to illustrate layout rather than a passing case?
-3. **Red-annotation reliability** — is the red rectangle always present, or
-   should the form's claimed-day list (col 10) be the primary source with the
-   rectangle as a cross-check?
+2. ~~**Generated-date direction (R4)**~~ **RESOLVED** — the generated date must be
+   **after** all claimed dates (proof of flown duty). A generated date earlier than
+   a claimed day → **INVALID** (hard reject, not review). The "(correct format)"
+   sample was chosen to illustrate layout, not as a passing R4 case.
+3. ~~**Red-annotation reliability**~~ **RESOLVED** — the red rectangle is
+   **not always present** (4 of 5 sample rosters have none). The form's
+   claimed-day list (col 10) is the **primary, authoritative source**; the
+   red rectangle is an optional visual annotation used only as a cross-check.
+   A missing red box must never block payment. See PD-OCR-002 for details.
 4. **Other claim types** — `Layover allowance` and `Irregularity of Sector
    Allowance` appear in the data. Do they follow the same DMK↔HKT rules, or
    separate eligibility?
