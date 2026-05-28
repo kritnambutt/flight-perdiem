@@ -211,8 +211,6 @@ def _empty(reason: str) -> ExtractedRoster:
 
 def _run_torch(image_path: str, model_path: str) -> str:
     """HuggingFace Transformers inference — for development / off-Pi."""
-    from pathlib import Path
-
     import torch
     from PIL import Image as PilImage
     from transformers import DonutProcessor, VisionEncoderDecoderModel
@@ -291,7 +289,8 @@ def _run_onnx(image_path: str, model_dir: str) -> str:
         if next_id == eos_id:
             break
         generated.append(next_id)
-        input_ids = np.array([[next_id]], dtype=np.int64)
+        # Pass full accumulated sequence — decoder self-attention needs all prior tokens.
+        input_ids = np.array([generated], dtype=np.int64)
 
     sequence = processor.tokenizer.decode(generated, skip_special_tokens=True)
     return sequence.replace(DONUT_PROMPT, "").strip()
