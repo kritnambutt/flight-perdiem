@@ -45,6 +45,8 @@ help:
 	@echo "    make ml-train-triage    Train triage classifier from dataset (PD-ML-004)"
 	@echo "    make ml-train-doctype   Train doc-type classifier from fixture images (PD-ML-005)"
 	@echo "    make ml-train-donut     Fine-tune Donut reader — needs GPU + transformers (PD-ML-006)"
+	@echo "    make ml-export-donut    Export trained Donut to ONNX + int8 (PD-ML-006)"
+	@echo "    make ml-bench-donut     Benchmark ONNX inference on CPU/Pi (PD-ML-006)"
 	@echo "    make ml-eval            Evaluate extractor/decision backend on held-out month"
 	@echo "    (pass extra flags via ARGS='...')"
 	@echo ""
@@ -191,6 +193,22 @@ ml-train-doctype: check-env check-venv
 ml-train-donut: check-env check-venv
 	cd backend && set -a && . ../.env && set +a && \
 	  ../.venv/bin/python ../scripts/train_donut.py $(ARGS)
+
+# Export fine-tuned Donut to ONNX + int8 (PD-ML-006 task 4) — run OFF-PI on the export machine.
+# Requires: pip install transformers torch onnx onnxruntime
+# Pass flags via ARGS, e.g.  make ml-export-donut ARGS="--model data/ml/models/donut --out data/ml/models/donut-onnx"
+.PHONY: ml-export-donut
+ml-export-donut: check-env check-venv
+	cd backend && set -a && . ../.env && set +a && \
+	  ../.venv/bin/python ../scripts/export_donut_onnx.py $(ARGS)
+
+# Benchmark Donut ONNX inference (PD-ML-006 task 4) — run on Pi or any CPU machine.
+# Requires: pip install onnxruntime transformers
+# Pass flags via ARGS, e.g.  make ml-bench-donut ARGS="--onnx-dir data/ml/models/donut-onnx --image docs/example-files/IMG_4481..."
+.PHONY: ml-bench-donut
+ml-bench-donut: check-env check-venv
+	cd backend && set -a && . ../.env && set +a && \
+	  ../.venv/bin/python ../scripts/bench_donut.py $(ARGS)
 
 # Score an extractor or decision backend against the held-out test month (PD-ML-003).
 # Pass flags via ARGS, e.g.  make ml-eval ARGS="--triage-model data/ml/models/triage.json"

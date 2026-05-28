@@ -34,6 +34,8 @@ type(scope): ✨ description
 - **Description:** short, present-tense ("Add" not "Added"); first line < 50 chars.
 - **Common Gitmoji:** ✨ feat · 🐛 fix · 📝 docs · 🎨 style · ♻️ refactor · 🧪 test · 🔧 chore.
 - Body explains the **why**, not a restatement of the diff.
+- **Co-author trailer:** end every commit with a blank line then
+  `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`.
 
 ## Staging discipline
 
@@ -58,9 +60,13 @@ type(scope): ✨ description
 
 ## Tooling
 
-- `/commit` skill — stage + write a conventional message + commit.
-- `/pr` skill — push the branch and open a PR.
-- `commit-author` agent — runs the whole staging+commit flow autonomously.
+- **`.claude/rules/git-commit.instructions.md`** — the detailed commit/push
+  procedure (allowed types, gitmoji, co-author trailer, secrets hook, make
+  lint/test gate). Source of truth for *how* to commit.
+- `/commit-and-push` skill — inspect → pick type → write message → commit →
+  push only when asked.
+- `commit-pr-agent` agent — generates commits + PR descriptions and asks for
+  approval at each decision point.
 - `code-reviewer` agent — review pending changes against the standards before commit.
 
 ## Secrets
