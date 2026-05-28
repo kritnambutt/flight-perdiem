@@ -5,7 +5,7 @@
 | Epic         | EP-ML — Roster Intelligence                                    |
 | Dependencies | PD-ML-002 (dataset), PD-ML-003 (baseline — **gate**), PD-ML-005 (front-end) |
 | Story Type   | Feature                                                        |
-| Status       | 🚧 In Progress — tasks 1/2/3/5 done; 4/6 need GPU + trained model |
+| Status       | 🚧 In Progress — tasks 1/2/3/4/5 done; 6 needs Pi benchmark + eval run |
 | Source       | REQUIREMENTS.md → §6.2 (F4, F6), §7 (N1)                       |
 
 ## 🗂 Epic Overview — EP-ML
@@ -131,10 +131,16 @@ def extract_roster_donut(roster: RosterRef, cfg: OcrConfig, model_path: str) -> 
    - Real vision split `data/ml/datasets/2026-05/vision.jsonl` still has 0 rows — populate
      roster cache first for real-data mixing.
 
-4. 📝 **TODO** ONNX export + int8 quantise; benchmark on Pi-class CPU.
-   - Export encoder + decoder to ONNX via `optimum` or manual export.
-   - Quantise with `onnxruntime.quantization`; target < 500 MB combined.
-   - Benchmark with `scripts/bench_donut.py` (to be added).
+4. ✅ **DONE** ONNX export + int8 quantise; benchmark on Pi-class CPU.
+   - `scripts/export_donut_onnx.py`: exports encoder + decoder as separate ONNX graphs
+     (dynamic seq-len axes); int8 `quantize_dynamic` via onnxruntime; saves `processor/`.
+     Target < 500 MB combined. `make ml-export-donut` entry point.
+   - `scripts/bench_donut.py`: measures encode + decode latency (averaged over N runs),
+     token/s, Pi verdict. `make ml-bench-donut` entry point.
+   - Fixed `_run_onnx` in `ml_extract.py` to pass the full accumulated token sequence
+     at each decode step (previous code passed only the last token — broke self-attention).
+   - **To run on Colab** (after training): `python scripts/export_donut_onnx.py --model data/ml/models/donut --out data/ml/models/donut-onnx`
+   - **Pi benchmark**: copy `*_q8.onnx` + `processor/` to the Pi, then `make ml-bench-donut ARGS="--onnx-dir <path> --image <roster> --n 1"`.
 
 5. ✅ **DONE** `extract_roster_donut()` with JSON-validation + confidence + Tesseract fallback.
    - `backend/perdiem/engine/ocr/ml_extract.py`: `DonutConfig`, `_parse_donut_output()` (field validation + confidence score), `extract_roster_donut()` (Donut → fallback to Tesseract if conf < threshold), `safe_extract_donut()` (returns None when disabled/missing).
@@ -154,14 +160,15 @@ backend/ml/roster_gen/                     # synthetic generator (DONE)
 ├── schema.py                              # SyntheticRosterData, SyntheticLeg, to_label_json()
 ├── generate.py                            # generate_roster(), generate_batch()
 └── renderer.py                            # render_roster() → BGR ndarray (PIL-based)
-backend/ml/donut/                          # fine-tune + ONNX export (TODO — off-Pi, GPU)
+backend/ml/donut/                          # fine-tune + ONNX export (DONE)
 backend/perdiem/engine/ocr/ml_extract.py   # pure inference: DonutConfig, extract_roster_donut(),
                                             # safe_extract_donut(), _parse_donut_output() (DONE)
 backend/perdiem/engine/ocr/base.py         # modified: DonutExtractor class added (DONE)
 backend/perdiem/config.py                  # modified: DONUT_* settings (DONE)
 backend/tests/ml/test_roster_gen.py        # 17 tests (DONE)
 backend/tests/ml/test_ml_extract.py        # 21 tests (DONE)
-data/ml/models/donut/                      # trained model artifact (gitignored, TODO after task 3-4)
+data/ml/models/donut/                      # trained model artifact (gitignored)
+data/ml/models/donut-onnx/                 # ONNX + int8 export (gitignored, produced by export_donut_onnx.py)
 .env.example                               # modified: DONUT_* env vars (DONE)
 ```
 
